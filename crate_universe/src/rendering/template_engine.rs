@@ -182,8 +182,9 @@ fn crate_build_file_fn_generator(template: String) -> impl tera::Function {
         move |args: &HashMap<String, Value>| -> tera::Result<Value> {
             let name = parse_tera_param!("name", String, args);
             let version = parse_tera_param!("version", String, args);
+            let features_hash = parse_tera_param!("features_hash", String, args);
 
-            match to_value(render_crate_build_file(&template, &name, &version)) {
+            match to_value(render_crate_build_file(&template, &name, &version, &features_hash)) {
                 Ok(v) => Ok(v),
                 Err(_) => Err(tera::Error::msg("Failed to generate crate's BUILD file")),
             }
@@ -240,12 +241,14 @@ fn crate_repository_fn_generator(template: String, repository_name: String) -> i
         move |args: &HashMap<String, Value>| -> tera::Result<Value> {
             let name = parse_tera_param!("name", String, args);
             let version = parse_tera_param!("version", String, args);
+            let features_hash = parse_tera_param!("features_hash", String, args);
 
             match to_value(sanitize_repository_name(&render_crate_bazel_repository(
                 &template,
                 &repository_name,
                 &name,
                 &version,
+                &features_hash,
             ))) {
                 Ok(v) => Ok(v),
                 Err(_) => Err(tera::Error::msg("Failed to generate crate repository name")),

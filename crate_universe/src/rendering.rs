@@ -722,18 +722,21 @@ pub fn render_crate_bazel_repository(
     repository_name: &str,
     name: &str,
     version: &str,
+    features_hash: &str,
 ) -> String {
     template
         .replace("{repository}", repository_name)
         .replace("{name}", name)
         .replace("{version}", version)
+        .replace("{features_hash}", features_hash)
 }
 
 /// Render the Bazel label of a crate
-pub fn render_crate_build_file(template: &str, name: &str, version: &str) -> String {
+pub fn render_crate_build_file(template: &str, name: &str, version: &str, features_hash: &str) -> String {
     template
         .replace("{name}", name)
         .replace("{version}", version)
+        .replace("{features_hash}", features_hash)
 }
 
 /// Render the Bazel label of a vendor module label

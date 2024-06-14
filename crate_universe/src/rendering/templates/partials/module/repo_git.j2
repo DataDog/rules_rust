@@ -1,6 +1,6 @@
     maybe(
         new_git_repository,
-        name = "{{ crate_repository(name = crate.name, version = crate.version) }}",
+        name = "{{ crate_repository(name = crate.name, version = crate.version, features_hash = crate.features_hash) }}",
     {%- for type, commitish in attrs.commitish %}
     {%- if type in ["Rev"] %}
         commit = "{{ commitish }}",
@@ -34,7 +34,7 @@
         shallow_since = "{{ attrs.shallow_since }}",
     {%- endif %}
         remote = "{{ attrs.remote }}",
-        build_file = Label("{{ crate_build_file(name = crate.name, version = crate.version)}}"),
+        build_file = Label("{{ crate_build_file(name = crate.name, version = crate.version, features_hash = crate.features_hash)}}"),
     {%- if attrs.strip_prefix %}
         strip_prefix = "{{ attrs.strip_prefix }}",
     {%- endif %}

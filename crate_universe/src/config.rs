@@ -109,11 +109,11 @@ fn default_crates_module_template() -> String {
 }
 
 fn default_crate_label_template() -> String {
-    "@{repository}__{name}-{version}//:{target}-{features_hash}".to_owned()
+    "@{repository}__{name}-{version}-{features_hash}//:{target}".to_owned()
 }
 
 fn default_crate_repository_template() -> String {
-    "{repository}__{name}-{version}".to_owned()
+    "{repository}__{name}-{version}-{features_hash}".to_owned()
 }
 
 fn default_platforms_template() -> String {

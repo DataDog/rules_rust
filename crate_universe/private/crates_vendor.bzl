@@ -145,7 +145,7 @@ def _write_config_file(ctx):
             output_pkg,
         )
     else:
-        build_file_base_template = "@{}//{}:BUILD.{{name}}-{{version}}.bazel"
+        build_file_base_template = "@{}//{}:BUILD.{{name}}-{{version}}-{{features_hash}}.bazel"
         crate_label_template = rendering_config["crate_label_template"]
 
     updates = {

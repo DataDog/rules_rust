@@ -1,6 +1,6 @@
     maybe(
         http_archive,
-        name = "{{ crate_repository(name = crate.name, version = crate.version) }}",
+        name = "{{ crate_repository(name = crate.name, version = crate.version, features_hash = crate.features_hash) }}",
     {%- if attrs | get(key="patch_args", default=Null) %}
         patch_args = [
     {%- for arg in attrs.patch_args %}
@@ -24,5 +24,5 @@
         type = "tar.gz",
         urls = ["{{ attrs.url }}"],
         strip_prefix = "{{ crate.name }}-{{ crate.version }}",
-        build_file = Label("{{ crate_build_file(name = crate.name, version = crate.version)}}"),
+        build_file = Label("{{ crate_build_file(name = crate.name, version = crate.version, features_hash = crate.features_hash)}}"),
     )
