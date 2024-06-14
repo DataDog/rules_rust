@@ -271,6 +271,9 @@ pub struct CrateContext {
     /// The full version of the current crate
     pub version: String,
 
+    /// The enabled features hash for the current crate
+    pub features_hash: String,
+
     /// Optional source annotations if they were discoverable in the
     /// lockfile. Workspace Members will not have source annotations and
     /// potentially others.
@@ -449,6 +452,7 @@ impl CrateContext {
         CrateContext {
             name: package.name.clone(),
             version: package.version.to_string(),
+            features_hash,
             repository,
             targets,
             library_target_name,
@@ -500,6 +504,7 @@ impl CrateContext {
                         }
                     }
                 }
+                self.features_hash = features_hash(&self.common_attrs.crate_features);
             }
 
             // Data
@@ -734,7 +739,7 @@ impl CrateContext {
     }
 }
 
-pub(crate) fn features_hash(features: &CrateFeatures) -> String {
+fn features_hash(features: &CrateFeatures) -> String {
     let mut hasher = DefaultHasher::new();
     features.hash(&mut hasher);
     hasher.finish().to_string()

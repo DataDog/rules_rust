@@ -12,10 +12,9 @@ use anyhow::{bail, Context as AnyhowContext, Result};
 use indoc::formatdoc;
 
 use crate::config::{RenderConfig, VendorMode};
-use crate::context::features_hash;
 use crate::context::{
     crate_context::{CrateContext, CrateDependency, Rule},
-    Context, CrateFeatures, TargetAttributes,
+    Context, TargetAttributes,
 };
 use crate::rendering::template_engine::TemplateEngine;
 use crate::splicing::default_splicing_package_crate_id;
@@ -167,7 +166,7 @@ impl Renderer {
                         &krate.name,
                         &krate.version,
                         library_target_name,
-                        &features_hash(&krate.common_attrs.crate_features),
+                        &krate.features_hash,
                     ),
                     tags: BTreeSet::from(["manual".to_owned()]),
                 });
@@ -196,7 +195,7 @@ impl Renderer {
                             &krate.name,
                             &krate.version,
                             &format!("{}__bin", bin.crate_name),
-                            &features_hash(&krate.common_attrs.crate_features),
+                            &krate.features_hash,
                         ),
                         tags: BTreeSet::from(["manual".to_owned()]),
                     });
@@ -232,7 +231,7 @@ impl Renderer {
                     &self.config.build_file_template,
                     &id.name,
                     &id.version,
-                    &crate_meta.common_attrs.crate_features,
+                    &crate_meta.features_hash,
                 ) {
                     Ok(label) => label,
                     Err(e) => bail!(e),
@@ -751,13 +750,13 @@ fn render_build_file_template(
     template: &str,
     name: &str,
     version: &str,
-    features: &CrateFeatures,
+    features_hash: &str,
 ) -> Result<Label> {
     Label::from_str(
         &template
             .replace("{name}", name)
             .replace("{version}", version)
-            .replace("{features_hash}", &features_hash(&features)),
+            .replace("{features_hash}", features_hash)
     )
 }
 
