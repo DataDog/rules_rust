@@ -2,10 +2,8 @@
 
 mod template_engine;
 
-use std::collections::hash_map::DefaultHasher;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -14,6 +12,7 @@ use anyhow::{bail, Context as AnyhowContext, Result};
 use indoc::formatdoc;
 
 use crate::config::{RenderConfig, VendorMode};
+use crate::context::features_hash;
 use crate::context::{
     crate_context::{CrateContext, CrateDependency, Rule},
     Context, CrateFeatures, TargetAttributes,
@@ -164,7 +163,12 @@ impl Renderer {
                     } else {
                         rename.clone()
                     },
-                    actual: self.crate_label(&krate.name, &krate.version, library_target_name),
+                    actual: self.crate_label(
+                        &krate.name,
+                        &krate.version,
+                        library_target_name,
+                        &features_hash(&krate.common_attrs.crate_features),
+                    ),
                     tags: BTreeSet::from(["manual".to_owned()]),
                 });
             }
@@ -192,6 +196,7 @@ impl Renderer {
                             &krate.name,
                             &krate.version,
                             &format!("{}__bin", bin.crate_name),
+                            &features_hash(&krate.common_attrs.crate_features),
                         ),
                         tags: BTreeSet::from(["manual".to_owned()]),
                     });
@@ -594,7 +599,12 @@ impl Renderer {
             })
         }) {
             if let Some(alias) = &dep.alias {
-                let label = self.crate_label(&dep.id.name, &dep.id.version, &dep.target);
+                let label = self.crate_label(
+                    &dep.id.name,
+                    &dep.id.version,
+                    &dep.target,
+                    &dep.features_hash,
+                );
                 aliases.insert(label, alias.clone(), conf.cloned());
             }
         }
@@ -606,9 +616,14 @@ impl Renderer {
         deps: &SelectList<CrateDependency>,
         extra_deps: &BTreeSet<String>,
     ) -> SelectList<String> {
-        let mut deps = deps
-            .clone()
-            .map(|dep| self.crate_label(&dep.id.name, &dep.id.version, &dep.target));
+        let mut deps = deps.clone().map(|dep| {
+            self.crate_label(
+                &dep.id.name,
+                &dep.id.version,
+                &dep.target,
+                &dep.features_hash,
+            )
+        });
         for extra_dep in extra_deps {
             deps.insert(extra_dep.clone(), None);
         }
@@ -635,13 +650,14 @@ impl Renderer {
         }
     }
 
-    fn crate_label(&self, name: &str, version: &str, target: &str) -> String {
+    fn crate_label(&self, name: &str, version: &str, target: &str, features_hash: &str) -> String {
         sanitize_repository_name(&render_crate_bazel_label(
             &self.config.crate_label_template,
             &self.config.repository_name,
             name,
             version,
             target,
+            features_hash,
         ))
     }
 }
@@ -691,12 +707,14 @@ pub fn render_crate_bazel_label(
     name: &str,
     version: &str,
     target: &str,
+    features_hash: &str,
 ) -> String {
     template
         .replace("{repository}", repository_name)
         .replace("{name}", name)
         .replace("{version}", version)
         .replace("{target}", target)
+        .replace("{features_hash}", features_hash)
 }
 
 /// Render the Bazel label of a crate
@@ -741,12 +759,6 @@ fn render_build_file_template(
             .replace("{version}", version)
             .replace("{features_hash}", &features_hash(&features)),
     )
-}
-
-fn features_hash(features: &CrateFeatures) -> String {
-    let mut hasher = DefaultHasher::new();
-    features.hash(&mut hasher);
-    hasher.finish().to_string()
 }
 
 fn make_data(platforms: &Platforms, glob: &BTreeSet<String>, select: &SelectList<String>) -> Data {

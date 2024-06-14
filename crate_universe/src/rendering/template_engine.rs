@@ -217,6 +217,7 @@ fn crate_label_fn_generator(template: String, repository_name: String) -> impl t
             let name = parse_tera_param!("name", String, args);
             let version = parse_tera_param!("version", String, args);
             let target = parse_tera_param!("target", String, args);
+            let features_hash = parse_tera_param!("features_hash", String, args);
 
             match to_value(sanitize_repository_name(&render_crate_bazel_label(
                 &template,
@@ -224,6 +225,7 @@ fn crate_label_fn_generator(template: String, repository_name: String) -> impl t
                 &name,
                 &version,
                 &target,
+                &features_hash,
             ))) {
                 Ok(v) => Ok(v),
                 Err(_) => Err(tera::Error::msg("Failed to generate crate's label")),

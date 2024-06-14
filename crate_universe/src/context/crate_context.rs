@@ -1,6 +1,8 @@
 //! Crate specific information embedded into [crate::context::Context] objects.
 
+use std::collections::hash_map::DefaultHasher;
 use std::collections::{BTreeMap, BTreeSet};
+use std::hash::{Hash, Hasher};
 
 use cargo_metadata::{Node, Package, PackageId};
 use serde::{Deserialize, Serialize};
@@ -22,6 +24,10 @@ pub struct CrateDependency {
     /// Some dependencies are assigned aliases. This is tracked here
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub alias: Option<String>,
+
+    /// When generating a dependency, we associate it to a set of expected features. Keeping the hash
+    /// in place here in order to be able to reference that specific instance from the generated targets.
+    pub features_hash: String
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone)]
@@ -41,6 +47,9 @@ pub struct TargetAttributes {
 
     /// A glob pattern of all source files required by the target
     pub srcs: Glob,
+
+    /// Crate's enabled features
+    pub features_hash: String,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone)]
@@ -306,7 +315,12 @@ impl CrateContext {
     ) -> Self {
         let package: &Package = &packages[&annotation.node.id];
         let current_crate_id = CrateId::new(package.name.clone(), package.version.to_string());
-
+        let crate_features = CrateFeatures::SelectList(
+            features
+                .get(&current_crate_id)
+                .map_or_else(SelectList::default, |f| f.clone()),
+        );
+        let features_hash = features_hash(&crate_features);
         let new_crate_dep = |dep: Dependency| -> CrateDependency {
             let pkg = &packages[&dep.package_id];
 
@@ -319,6 +333,7 @@ impl CrateContext {
                 id: CrateId::new(pkg.name.clone(), pkg.version.to_string()),
                 target,
                 alias: dep.alias,
+                features_hash: features_hash.clone(),
             }
         };
 
@@ -334,11 +349,7 @@ impl CrateContext {
 
         // Gather all "common" attributes
         let mut common_attrs = CommonAttributes {
-            crate_features: CrateFeatures::SelectList(
-                features
-                    .get(&current_crate_id)
-                    .map_or_else(SelectList::default, |f| f.clone()),
-            ),
+            crate_features,
             deps,
             deps_dev,
             edition: package.edition.as_str().to_string(),
@@ -406,6 +417,7 @@ impl CrateContext {
                     id: current_crate_id,
                     target: target.crate_name.clone(),
                     alias: None,
+                    features_hash: target.features_hash.clone(),
                 },
                 None,
             );
@@ -645,10 +657,17 @@ impl CrateContext {
             .parent()
             .expect("Every manifest should have a parent directory");
 
+        let mut select_list = SelectList::default();
+        for v in &node.features {
+            select_list.insert(v.clone(), None);
+        }
+        let crate_features = CrateFeatures::SelectList(select_list);
+        let features_hash = features_hash(&crate_features);
         package
             .targets
             .iter()
             .flat_map(|target| {
+                let features_hash = features_hash.clone();
                 target.kind.iter().filter_map(move |kind| {
                     // Unfortunately, The package graph and resolve graph of cargo metadata have different representations
                     // for the crate names (resolve graph sanitizes names to match module names) so to get the rest of this
@@ -661,12 +680,15 @@ impl CrateContext {
                         |root| root.to_string_lossy().replace('\\', "/"),
                     );
 
+                    let features_hash = features_hash.clone();
+
                     // Conditionally check to see if the dependencies is a build-script target
                     if include_build_scripts && kind == "custom-build" {
                         return Some(Rule::BuildScript(TargetAttributes {
                             crate_name,
                             crate_root,
                             srcs: Glob::new_rust_srcs(),
+                            features_hash,
                         }));
                     }
 
@@ -676,6 +698,7 @@ impl CrateContext {
                             crate_name,
                             crate_root,
                             srcs: Glob::new_rust_srcs(),
+                            features_hash,
                         }));
                     }
 
@@ -685,6 +708,7 @@ impl CrateContext {
                             crate_name,
                             crate_root,
                             srcs: Glob::new_rust_srcs(),
+                            features_hash,
                         }));
                     }
 
@@ -699,6 +723,7 @@ impl CrateContext {
                             crate_name: target.name.clone(),
                             crate_root,
                             srcs: Glob::new_rust_srcs(),
+                            features_hash,
                         }));
                     }
 
@@ -707,6 +732,12 @@ impl CrateContext {
             })
             .collect()
     }
+}
+
+pub(crate) fn features_hash(features: &CrateFeatures) -> String {
+    let mut hasher = DefaultHasher::new();
+    features.hash(&mut hasher);
+    hasher.finish().to_string()
 }
 
 #[cfg(test)]
