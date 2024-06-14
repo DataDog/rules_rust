@@ -58,7 +58,7 @@ pub enum Rule {
     BuildScript(TargetAttributes),
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum CrateFeatures {
     // Not populated going forward. This just exists for backward compatiblity

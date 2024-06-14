@@ -2,8 +2,10 @@
 
 mod template_engine;
 
+use std::collections::hash_map::DefaultHasher;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -12,8 +14,10 @@ use anyhow::{bail, Context as AnyhowContext, Result};
 use indoc::formatdoc;
 
 use crate::config::{RenderConfig, VendorMode};
-use crate::context::crate_context::{CrateContext, CrateDependency, Rule};
-use crate::context::{Context, TargetAttributes};
+use crate::context::{
+    crate_context::{CrateContext, CrateDependency, Rule},
+    Context, CrateFeatures, TargetAttributes,
+};
 use crate::rendering::template_engine::TemplateEngine;
 use crate::splicing::default_splicing_package_crate_id;
 use crate::utils::starlark::{
@@ -218,10 +222,12 @@ impl Renderer {
             // Do not render local packages
             .filter(|id| !context.workspace_members.contains_key(id))
             .map(|id| {
+                let crate_meta = &context.crates[id];
                 let label = match render_build_file_template(
                     &self.config.build_file_template,
                     &id.name,
                     &id.version,
+                    &crate_meta.common_attrs.crate_features,
                 ) {
                     Ok(label) => label,
                     Err(e) => bail!(e),
@@ -723,12 +729,24 @@ fn render_platform_constraint_label(template: &str, triple: &str) -> String {
     template.replace("{triple}", triple)
 }
 
-fn render_build_file_template(template: &str, name: &str, version: &str) -> Result<Label> {
+fn render_build_file_template(
+    template: &str,
+    name: &str,
+    version: &str,
+    features: &CrateFeatures,
+) -> Result<Label> {
     Label::from_str(
         &template
             .replace("{name}", name)
-            .replace("{version}", version),
+            .replace("{version}", version)
+            .replace("{features_hash}", &features_hash(&features)),
     )
+}
+
+fn features_hash(features: &CrateFeatures) -> String {
+    let mut hasher = DefaultHasher::new();
+    features.hash(&mut hasher);
+    hasher.finish().to_string()
 }
 
 fn make_data(platforms: &Platforms, glob: &BTreeSet<String>, select: &SelectList<String>) -> Data {

@@ -62,6 +62,9 @@ impl Context {
                     annotations.config.generate_binaries,
                     annotations.config.generate_build_scripts,
                 );
+                // We identify the crates by their name, version, and features.
+                // This allows us to differentiate features and not include everything everywhere.
+                // The cost is multiple entries for the same crates.
                 let id = CrateId::new(context.name.clone(), context.version.clone());
                 (id, context)
             })

@@ -22,7 +22,7 @@ pub trait Select<T> {
     fn configurations(&self) -> BTreeSet<Option<&String>>;
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone)]
 pub struct SelectList<T: Ord> {
     // Invariant: any T in `common` is not anywhere in `selects`.
     common: BTreeSet<T>,
