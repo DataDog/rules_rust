@@ -27,7 +27,11 @@ pub use self::metadata_annotation::*;
 // TODO: This should also return a set of [crate-index::IndexConfig]s for packages in metadata.packages
 /// A Trait for generating metadata (`cargo metadata` output and a lock file) from a Cargo manifest.
 pub trait MetadataGenerator {
-    fn generate<T: AsRef<Path>>(&self, manifest_path: T) -> Result<(CargoMetadata, CargoLockfile)>;
+    fn generate<T: AsRef<Path>>(
+        &self,
+        manifest_path: T,
+        workspace_manifest_path: T,
+    ) -> Result<(CargoMetadata, CargoLockfile)>;
 }
 
 /// Generates Cargo metadata and a lockfile from a provided manifest.
@@ -61,8 +65,12 @@ impl Generator {
 }
 
 impl MetadataGenerator for Generator {
-    fn generate<T: AsRef<Path>>(&self, manifest_path: T) -> Result<(CargoMetadata, CargoLockfile)> {
-        let manifest_dir = manifest_path
+    fn generate<T: AsRef<Path>>(
+        &self,
+        manifest_path: T,
+        workspace_manifest_path: T,
+    ) -> Result<(CargoMetadata, CargoLockfile)> {
+        let manifest_dir = workspace_manifest_path
             .as_ref()
             .parent()
             .expect("The manifest should have a parent directory");

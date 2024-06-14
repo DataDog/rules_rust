@@ -1,5 +1,6 @@
 //! The cli entrypoint for the `vendor` subcommand
 
+use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::env;
 use std::fs;
@@ -121,6 +122,12 @@ pub fn vendor(opt: VendorOptions) -> Result<()> {
 
     let temp_dir = tempfile::tempdir().context("Failed to create temporary directory")?;
 
+    let manifest_paths = splicing_manifest
+        .manifests
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>();
+
     // Generate a splicer for creating a Cargo workspace manifest
     let splicer = Splicer::new(PathBuf::from(temp_dir.as_ref()), splicing_manifest)
         .context("Failed to create splicer")?;
@@ -158,25 +165,29 @@ pub fn vendor(opt: VendorOptions) -> Result<()> {
         manifest_path.as_path_buf(),
     )?;
 
-    // Write metadata to the workspace for future reuse
-    let (cargo_metadata, cargo_lockfile) = Generator::new()
-        .with_cargo(cargo.clone())
-        .with_rustc(opt.rustc.clone())
-        .generate(manifest_path.as_path_buf())?;
+    let mut outputs = BTreeMap::new();
+    for package_manifest_path in manifest_paths {
+        // Write metadata to the workspace for future reuse
+        let (cargo_metadata, cargo_lockfile) = Generator::new()
+            .with_cargo(cargo.clone())
+            .with_rustc(opt.rustc.clone())
+            .generate(package_manifest_path.as_path(), manifest_path.as_path_buf())?;
 
-    // Annotate metadata
-    let annotations = Annotations::new(cargo_metadata, cargo_lockfile.clone(), config.clone())?;
+        // Annotate metadata
+        let annotations = Annotations::new(cargo_metadata, cargo_lockfile.clone(), config.clone())?;
 
-    // Generate renderable contexts for earch package
-    let context = Context::new(annotations)?;
+        // Generate renderable contexts for earch package
+        let context = Context::new(annotations)?;
 
-    // Render build files
-    let outputs = Renderer::new(
-        config.rendering.clone(),
-        config.supported_platform_triples.clone(),
-        config.generate_target_compatible_with,
-    )
-    .render(&context)?;
+        // Render build files
+        let manifest_outputs = Renderer::new(
+            config.rendering.clone(),
+            config.supported_platform_triples.clone(),
+            config.generate_target_compatible_with,
+        )
+        .render(&context)?;
+        outputs.extend(manifest_outputs);
+    }
 
     // Cache the file names for potential use with buildifier
     let file_names: BTreeSet<PathBuf> = outputs.keys().cloned().collect();
