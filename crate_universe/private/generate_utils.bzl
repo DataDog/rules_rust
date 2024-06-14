@@ -81,9 +81,9 @@ def get_generator(repository_ctx, host_triple):
     return output, {host_triple: result.sha256}
 
 def render_config(
-        build_file_template = "//:BUILD.{name}-{version}.bazel",
-        crate_label_template = "@{repository}__{name}-{version}//:{target}",
-        crate_repository_template = "{repository}__{name}-{version}",
+        build_file_template = "//:BUILD.{name}-{version}-{features_hash}.bazel",
+        crate_label_template = "@{repository}__{name}-{version}-{features_hash}//:{target}",
+        crate_repository_template = "{repository}__{name}-{version}-{features_hash}",
         crates_module_template = "//:{file}",
         default_package_name = None,
         platforms_template = "@rules_rust//rust/platform:{triple}",
