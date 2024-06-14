@@ -18,7 +18,7 @@ fi
 # If you provide an empty path, bazel starts itself with
 # --default_system_javabase set to the empty string, but if you provide a path,
 # it may set it to a value (eg. "/usr/local/buildtools/java/jdk11").
-eval exec env - BAZEL_REAL="${{BAZEL_REAL}}" BUILD_WORKSPACE_DIRECTORY="${{BUILD_WORKSPACE_DIRECTORY}}" PATH="${{PATH}}" {env} \\
+exec env - BAZEL_REAL="${{BAZEL_REAL}}" BUILD_WORKSPACE_DIRECTORY="${{BUILD_WORKSPACE_DIRECTORY}}" PATH="${{PATH}}" {env} \\
 "{bin}" {args} "$@"
 """
 
@@ -207,6 +207,7 @@ def _crates_vendor_impl(ctx):
         "CARGO": _runfiles_path(toolchain.cargo, is_windows),
         "RUSTC": _runfiles_path(toolchain.rustc, is_windows),
     }
+    environ.update(ctx.attr.env)
 
     args = ["vendor"]
 
@@ -455,6 +456,7 @@ call against the generated workspace. The following table describes how to contr
             doc = "The path to a directory to write files into. Absolute paths will be treated as relative to the workspace root",
             default = "crates",
         ),
+        "env": attr.string_dict(),
     },
     executable = True,
     toolchains = ["@rules_rust//rust:toolchain_type"],
